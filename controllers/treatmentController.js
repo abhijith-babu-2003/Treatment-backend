@@ -1,24 +1,38 @@
 import Treatment from "../model/treatmentSchema.js";
 
-// @desc    Get user treatments
-// @route   GET /api/treatments
-// @access  Private
+
 export const getTreatments = async (req, res) => {
   try {
-    const treatments = await Treatment.find({ user: req.user.id });
+    if (!req.user?.id) {
+      console.error('No user ID in request');
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+    
+    const treatments = await Treatment.find({ user: req.user.id })
+      .sort({ createdAt: -1 }) // Sort by most recent first
+      .lean();
+      
+    console.log(`Found ${treatments.length} treatments for user ${req.user.id}`);
     res.status(200).json(treatments);
   } catch (error) {
     console.error('Get treatments error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: error.message || 'Error fetching treatments' 
+    });
   }
 };
 
-// @desc    Create new treatment
-// @route   POST /api/treatments
-// @access  Private
+
 export const createTreatment = async (req, res) => {
   try {
+    console.log('Create treatment request:', { body: req.body, user: req.user });
+    
     const { name, dosage, frequency, startDate, endDate, notes, description } = req.body;
+    
+    if (!req.user?.id) {
+      console.error('No user ID in request');
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
     
     const treatment = await Treatment.create({
       user: req.user.id,
@@ -31,70 +45,51 @@ export const createTreatment = async (req, res) => {
       description: description || '',
     });
 
+    console.log('Created treatment:', treatment);
     res.status(201).json(treatment);
   } catch (error) {
     console.error('Create treatment error:', error);
-    res.status(500).json({ message: error.message });
+    const statusCode = error.name === 'ValidationError' ? 400 : 500;
+    res.status(statusCode).json({ 
+      message: error.message || 'Error creating treatment' 
+    });
   }
 };
 
-// @desc    Update treatment
-// @route   PUT /api/treatments/:id
-// @access  Private
-export const updateTreatment = async (req, res) => {
-  try {
-    const treatment = await Treatment.findById(req.params.id);
 
-    if (!treatment) {
-      return res.status(404).json({ message: 'Treatment not found' });
-    }
-
-    // Check if user owns the treatment
-    if (treatment.user.toString() !== req.user.id) {
-      return res.status(401).json({ message: 'Not authorized' });
-    }
-
-    const updatedTreatment = await Treatment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    res.status(200).json(updatedTreatment);
-  } catch (error) {
-    console.error('Update treatment error:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Delete treatment
-// @route   DELETE /api/treatments/:id
-// @access  Private
 export const deleteTreatment = async (req, res) => {
   try {
-    // Validate ID format
-    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ message: 'Invalid treatment ID format' });
-    }
-
+    console.log('Delete treatment request:', { params: req.params, user: req.user });
+    
     const treatment = await Treatment.findById(req.params.id);
+    console.log('Found treatment:', treatment);
 
     if (!treatment) {
+      console.log('Treatment not found');
       return res.status(404).json({ message: 'Treatment not found' });
     }
 
     // Check if user owns the treatment
-    if (treatment.user.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'Not authorized to delete this treatment' 
+    if (!treatment.user) {
+      console.error('Treatment has no user field:', treatment);
+      return res.status(500).json({ message: 'Invalid treatment data' });
+    }
+
+    if (treatment.user.toString() !== req.user?.id) {
+      console.log('Unauthorized access attempt:', { 
+        treatmentUser: treatment.user.toString(), 
+        currentUser: req.user?.id 
       });
+      return res.status(403).json({ message: 'Not authorized to delete this treatment' });
     }
 
     // Delete the treatment
-    const deletedTreatment = await Treatment.findByIdAndDelete(req.params.id);
+    const result = await Treatment.findByIdAndDelete(req.params.id);
+    console.log('Delete result:', result);
     
-    if (!deletedTreatment) {
-      return res.status(404).json({ message: 'Treatment not found or already deleted' });
+    if (!result) {
+      console.log('Treatment already deleted');
+      return res.status(404).json({ message: 'Treatment not found' });
     }
     
     res.status(200).json({ 
@@ -104,9 +99,9 @@ export const deleteTreatment = async (req, res) => {
     });
   } catch (error) {
     console.error('Delete treatment error:', error);
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid treatment ID' });
-    }
-    res.status(500).json({ message: error.message });
+    const statusCode = error.name === 'CastError' ? 400 : 500;
+    res.status(statusCode).json({ 
+      message: error.message || 'Error deleting treatment' 
+    });
   }
 };

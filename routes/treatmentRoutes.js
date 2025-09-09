@@ -13,10 +13,9 @@ router.use(protect);
 
 router.get('/', getTreatments);
 
-// POST /api/treatments - Create a new treatment
 router.post('/', createTreatment);
 
-// DELETE /api/treatments/:id - Delete a treatment
+
 router.delete('/:id', deleteTreatment);
 
 export default router;
