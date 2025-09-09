@@ -9,7 +9,7 @@ export const getTreatments = async (req, res) => {
     }
     
     const treatments = await Treatment.find({ user: req.user.id })
-      .sort({ createdAt: -1 }) // Sort by most recent first
+      .sort({ createdAt: -1 }) 
       .lean();
       
     console.log(`Found ${treatments.length} treatments for user ${req.user.id}`);
@@ -69,7 +69,7 @@ export const deleteTreatment = async (req, res) => {
       return res.status(404).json({ message: 'Treatment not found' });
     }
 
-    // Check if user owns the treatment
+ 
     if (!treatment.user) {
       console.error('Treatment has no user field:', treatment);
       return res.status(500).json({ message: 'Invalid treatment data' });
@@ -83,7 +83,7 @@ export const deleteTreatment = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this treatment' });
     }
 
-    // Delete the treatment
+   
     const result = await Treatment.findByIdAndDelete(req.params.id);
     console.log('Delete result:', result);
     

@@ -32,11 +32,11 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Don't hash password again if it's already hashed during registration
+
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   
-  // Only hash if password is not already hashed (in case it's coming from registration)
+
   if (!this.password.startsWith('$2b$')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
