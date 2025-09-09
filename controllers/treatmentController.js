@@ -33,14 +33,27 @@ export const createTreatment = async (req, res) => {
       console.error('No user ID in request');
       return res.status(401).json({ message: 'User not authenticated' });
     }
-    
+
+  
+    const existingTreatment = await Treatment.findOne({
+      user: req.user.id,
+      name: name,
+      dosage: dosage || 'N/A',
+      frequency: frequency || 'As needed',
+    });
+
+    if (existingTreatment) {
+      console.log('Duplicate treatment found:', existingTreatment);
+      return res.status(409).json({ message: 'Treatment already exists' });
+    }
+
     const treatment = await Treatment.create({
       user: req.user.id,
       name,
       dosage: dosage || 'N/A',
       frequency: frequency || 'As needed',
       startDate: startDate || new Date(),
-      endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 
       notes: notes || '',
       description: description || '',
     });
@@ -55,6 +68,7 @@ export const createTreatment = async (req, res) => {
     });
   }
 };
+
 
 
 export const deleteTreatment = async (req, res) => {
